@@ -1,0 +1,73 @@
+#include <WiFi.h>
+#include <PubSubClient.h>
+#include <HX711.h>
+#include <Adafruit_VL53L0X.h>
+
+// 1. 설정
+#define LOADCELL_DOUT_PIN 16
+#define LOADCELL_SCK_PIN  17
+#define TIME_TO_SLEEP     30        // 잠자는 시간 (초 단위)
+#define uS_TO_S_FACTOR    1000000ULL // 마이크로초 -> 초 변환 계수
+
+const char* ssid = "YOUR_SSID";
+const char* password = "YOUR_PASSWORD";
+const char* mqtt_server = "broker.hivemq.com";
+
+WiFiClient espClient;
+PubSubClient client(espClient);
+HX711 scale;
+Adafruit_VL53L0X uint_tof = Adafruit_VL53L0X();
+
+// 2. 데이터 측정 및 전송 메인 로직
+void performTask() {
+  // 센서 데이터 읽기
+  float weight = scale.get_units(10); // 10번 평균으로 정밀도 향상
+  
+  VL53L0X_RangingMeasurementData_t measure;
+  uint_tof.rangingTest(&measure, false);
+  int distance = (measure.RangeStatus != 4) ? measure.RangeMilliMeter : 9999;
+
+  // 판단 (무게 5kg 이상 AND 거리 60cm 이하)
+  const char* occupancyStatus = (weight > 5.0 && distance < 600) ? "ON" : "OFF";
+
+  // WiFi 및 MQTT 접속 후 전송
+  if (WiFi.status() == WL_CONNECTED) {
+    if (client.connect("ESP32_Seat_Client")) {
+      // Topic: office/seat/1, Payload: ON/OFF, Retain: true
+      client.publish("office/seat/1", occupancyStatus, true);
+      Serial.printf("Sent: %s\n", occupancyStatus);
+      delay(100); // 전송 완료 대기
+      client.disconnect();
+    }
+  }
+}
+
+void setup() {
+  Serial.begin(115200);
+
+  // 센서 초기화
+  scale.begin(LOADCELL_DOUT_PIN, LOADCELL_SCK_PIN);
+  if (!uint_tof.begin()) Serial.println("ToF Sensor Error");
+
+  // WiFi 연결
+  WiFi.begin(ssid, password);
+  int attempt = 0;
+  while (WiFi.status() != WL_CONNECTED && attempt < 20) {
+    delay(500);
+    attempt++;
+  }
+
+  client.setServer(mqtt_server, 1883);
+
+  // 측정 및 전송 실행
+  performTask();
+
+  // 3. 타이머 기반 Deep Sleep 설정
+  Serial.println("Entering Deep Sleep...");
+  esp_sleep_enable_timer_wakeup(TIME_TO_SLEEP * uS_TO_S_FACTOR);
+  esp_deep_sleep_start();
+}
+
+void loop() {
+  // Deep Sleep 모드에서는 절대 실행되지 않음
+}
