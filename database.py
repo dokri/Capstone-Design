@@ -3,10 +3,9 @@ from sqlalchemy.orm import DeclarativeBase
 import os
 
 # postgresql+asyncpg:// 드라이버 사용
-DATABASE_URL = os.getenv(
-    "DATABASE_URL",
-    "postgresql+asyncpg://postgres:password@localhost:5432/seatdb"
-)
+DATABASE_URL = os.getenv("DATABASE_URL")
+if not DATABASE_URL:
+    raise RuntimeError("환경변수 DATABASE_URL이 설정되지 않았습니다. .env 파일을 확인하세요.")
 
 engine = create_async_engine(DATABASE_URL, echo=False)
 
@@ -18,7 +17,6 @@ AsyncSessionLocal = async_sessionmaker(
 
 
 # FastAPI Depends용 async 제너레이터
-# 요청마다 새로운 DB 세션을 생성하고, 요청이 끝나면 세션을 닫음
 async def get_db():
     async with AsyncSessionLocal() as session:
         yield session
