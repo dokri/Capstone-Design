@@ -1,0 +1,28 @@
+# 환경변수
+.env
+*.env
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+venv/
+.venv/
+
+# IDE
+.vscode/
+.idea/
+
+# YOLO 모델
+*.pt
+*.onnx
+
+# 로그
+*.log
+
+# macOS
+.DS_Store
+
+# 프로젝트 구조
+Server/
+YOLOServer/
