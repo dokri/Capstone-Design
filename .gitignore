@@ -1,10 +1,4 @@
-# 최상위에 gitignore가 없다면 아래 명령어로 바로 생성
-echo "__pycache__/
-*.pyc
-venv/
-.venv/
-*.db
-*.sqlite3
-*.pt
-.env
-.DS_Store" > .gitignore
+.DS_Store
+**/.DS_Store
+Server/.conda/
+YOLO_Server/
