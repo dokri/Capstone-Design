@@ -1,0 +1,25 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+venv/
+ENV/
+
+# Database (중요!)
+*.db
+*.sqlite3
+
+# AI Models (용량 방지)
+*.pt
+*.pth
+
+# Environment Variables
+.env
+
+# OS
+.DS_Store
+Thumbs.db
+
+# 로그 파일
+*.log
