@@ -7,9 +7,12 @@ crud.py — 비동기 DB 접근 로직 전담
 from typing import List, Optional, Tuple
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+from datetime import datetime, timezone
+from schemas import SeatStatusEnum
+
 
 from models import Camera, Seat
-import schemas  # schemas.CameraCreate 등을 사용하기 위해 전체 임포트 권장
+import schemas # schemas.CameraCreate 등을 사용하기 위해 전체 임포트 권장
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -119,7 +122,7 @@ async def reserve_seat(db: AsyncSession, seat_id: int):
     # models.py에 is_booked가 추가되었으므로 hasattr 없이 직접 접근해도 됩니다.
     seat.is_booked = True 
     seat.status = SeatStatusEnum.vacant
-    seat.vacant_since = datetime.now(timezone.utc)
+    seat.vacant_since = None
     seat.is_occupied = False 
 
     try:
@@ -132,3 +135,71 @@ async def reserve_seat(db: AsyncSession, seat_id: int):
         print(f"❌ DB 저장 중 에러 발생: {e}")
         await db.rollback()
         return False, "db_error", None
+    
+
+
+async def get_my_reservations(db):
+    result = await db.execute(
+        select(Seat).where(
+            Seat.status.in_([
+                SeatStatusEnum.using,
+                SeatStatusEnum.temp
+            ])
+        )
+    )
+
+    return result.scalars().all()
+
+
+async def return_seat(db, seat_id: int):
+    seat = await get_seat(db, seat_id)
+
+    if not seat:
+        return None, "not_found"
+
+    seat.status = SeatStatusEnum.vacant
+    seat.vacant_since = None
+    seat.updated_at = datetime.now(timezone.utc)
+
+    await db.commit()
+    await db.refresh(seat)
+
+    return seat, "success"
+
+
+async def temp_leave_seat(db, seat_id: int):
+    seat = await get_seat(db, seat_id)
+
+    if not seat:
+        return None, "not_found"
+
+    if seat.status != SeatStatusEnum.using:
+        return None, "invalid_status"
+
+    seat.status = SeatStatusEnum.temp
+    seat.vacant_since = datetime.now(timezone.utc)
+    seat.updated_at = datetime.now(timezone.utc)
+
+    await db.commit()
+    await db.refresh(seat)
+
+    return seat, "success"
+
+
+async def return_from_temp(db, seat_id: int):
+    seat = await get_seat(db, seat_id)
+
+    if not seat:
+        return None, "not_found"
+
+    if seat.status != SeatStatusEnum.temp:
+        return None, "invalid_status"
+
+    seat.status = SeatStatusEnum.using
+    seat.vacant_since = None
+    seat.updated_at = datetime.now(timezone.utc)
+
+    await db.commit()
+    await db.refresh(seat)
+
+    return seat, "success"

@@ -31,6 +31,7 @@ class Seat(Base):
     is_occupied = Column(Boolean, default=False, nullable=False)
     status = Column(String, default="vacant", nullable=False)  # using | temp | vacant
     last_detected_at = Column(DateTime(timezone=True), nullable=True)
+    first_detected_at = Column(DateTime(timezone=True), nullable=True)  # 추가
     vacant_since = Column(DateTime(timezone=True), nullable=True)  # 비어있기 시작한 시각
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
 

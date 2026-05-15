@@ -10,6 +10,7 @@ class SeatStatusEnum(str, Enum):
     using  = "using"   # 사용 중 (YOLO 감지 or 웹 예약)
     temp   = "temp"    # 일시비움 (마지막 감지 후 timeout 전)
     vacant = "vacant"  # 미사용 (timeout 완료 or 미사용)
+    auto = "auto"     # 자동 해제 (예약된 좌석이 일정 시간 비어있을 때 자동으로 vacant 처리)
 
 
 # ── YOLO 서버 → 메인 서버 ──────────────────────────────────────────────────
@@ -118,4 +119,3 @@ class SeatResponse(BaseModel):
 
     class Config:
         from_attributes = True
-
