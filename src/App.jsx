@@ -67,9 +67,23 @@ const convertSeatGroupsToSeats = (seatGroups) => {
 };
 
 const App = () => {
-  const [seats, setSeats] = useState(createInitialSeats);
-  const [reservedSeatId, setReservedSeatId] = useState(null);
+  const [seats, setSeats] = useState(() => {
+    const savedSeats = localStorage.getItem('seats');
+
+    if (savedSeats) {
+      return JSON.parse(savedSeats);
+    }
+
+    return createInitialSeats();
+  });
+
+  const [reservedSeatId, setReservedSeatId] = useState(() => {
+    const savedSeatId = localStorage.getItem('reservedSeatId');
+    return savedSeatId ? Number(savedSeatId) : null;
+  });
+
   const [isSeatApiConnected, setIsSeatApiConnected] = useState(false);
+
   const location = useLocation();
 
   const isAdminPage = location.pathname === '/admin';
@@ -107,6 +121,20 @@ const App = () => {
 
     return () => clearInterval(intervalId);
   }, []);
+
+  // 예약 좌석 저장
+  useEffect(() => {
+    if (reservedSeatId) {
+      localStorage.setItem('reservedSeatId', String(reservedSeatId));
+    } else {
+      localStorage.removeItem('reservedSeatId');
+    }
+  }, [reservedSeatId]);
+
+  // 전체 좌석 상태 저장
+  useEffect(() => {
+    localStorage.setItem('seats', JSON.stringify(seats));
+  }, [seats]);
 
   return (
     <div className="container">
