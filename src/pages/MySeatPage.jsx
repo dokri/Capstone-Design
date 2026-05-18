@@ -1,39 +1,46 @@
-import React, { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import './MySeatPage.css';
-import chairIcon from '../assets/chair.svg';
+import React, { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import "./MySeatPage.css";
+import chairIcon from "../assets/chair.svg";
+
+import {
+  getMyReservation,
+  returnReservation,
+  tempLeaveReservation,
+  restoreReservation,
+} from "../api/reservationApi";
 
 const SEAT_TYPES = {
   using: {
-    label: '사용중',
-    color: '#00BC3F',
-    bgColor: '#C3FFD7',
+    label: "사용중",
+    color: "#00BC3F",
+    bgColor: "#C3FFD7",
     icon: chairIcon,
     filter:
-      'invert(42%) sepia(80%) saturate(2850%) hue-rotate(125deg) brightness(105%) contrast(120%)',
+      "invert(42%) sepia(80%) saturate(2850%) hue-rotate(125deg) brightness(105%) contrast(120%)",
   },
   vacant: {
-    label: '미사용',
-    color: '#454545',
-    bgColor: '#EFEFEF',
+    label: "미사용",
+    color: "#454545",
+    bgColor: "#EFEFEF",
     icon: chairIcon,
-    filter: 'none',
+    filter: "none",
   },
   auto: {
-    label: '자동반납',
-    color: '#D25354',
-    bgColor: '#FDE9E8',
+    label: "자동반납",
+    color: "#D25354",
+    bgColor: "#FDE9E8",
     icon: chairIcon,
     filter:
-      'invert(38%) sepia(74%) saturate(2476%) hue-rotate(340deg) brightness(95%) contrast(105%)',
+      "invert(38%) sepia(74%) saturate(2476%) hue-rotate(340deg) brightness(95%) contrast(105%)",
   },
   temp: {
-    label: '일시비움',
-    color: '#FFC200',
-    bgColor: '#FEF2CC',
+    label: "일시비움",
+    color: "#FFC200",
+    bgColor: "#FEF2CC",
     icon: chairIcon,
     filter:
-      'invert(85%) sepia(85%) saturate(1500%) hue-rotate(10deg) brightness(105%) contrast(105%)',
+      "invert(85%) sepia(85%) saturate(1500%) hue-rotate(10deg) brightness(105%) contrast(105%)",
   },
 };
 
@@ -41,9 +48,10 @@ const TEMP_SECONDS = 11 * 60;
 
 const formatRemainingTime = (seconds) => {
   const safeSeconds = Math.max(0, seconds);
-  const hours = String(Math.floor(safeSeconds / 3600)).padStart(2, '0');
-  const minutes = String(Math.floor((safeSeconds % 3600) / 60)).padStart(2, '0');
-  const secs = String(safeSeconds % 60).padStart(2, '0');
+  const hours = String(Math.floor(safeSeconds / 3600)).padStart(2, "0");
+  const minutes = String(Math.floor((safeSeconds % 3600) / 60)).padStart(2, "0");
+  const secs = String(safeSeconds % 60).padStart(2, "0");
+
   return `${hours}:${minutes}:${secs}`;
 };
 
@@ -54,25 +62,61 @@ const MySeatPage = ({
   setReservedSeatId,
 }) => {
   const navigate = useNavigate();
+
   const [remainingSeconds, setRemainingSeconds] = useState(TEMP_SECONDS);
   const [alerts, setAlerts] = useState([]);
+  const [mySeatId, setMySeatId] = useState(reservedSeatId);
+  const [isActionLoading, setIsActionLoading] = useState(false);
 
-  const mySeat = seats.find((seat) => seat.id === reservedSeatId);
-  const isTemp = mySeat?.status === 'temp';
-  const isAuto = mySeat?.status === 'auto';
+  const mySeat = seats.find((seat) => seat.id === mySeatId);
+  const isTemp = mySeat?.status === "temp";
+  const isAuto = mySeat?.status === "auto";
+
+  useEffect(() => {
+    loadMyReservation();
+  }, []);
+
+  const loadMyReservation = async () => {
+    try {
+      const data = await getMyReservation();
+
+      const seatId = data?.seat_id || data?.id;
+
+      if (seatId) {
+        setMySeatId(seatId);
+        setReservedSeatId(seatId);
+
+        setSeats((prevSeats) =>
+          prevSeats.map((seat) =>
+            seat.id === seatId
+              ? {
+                  ...seat,
+                  status: data.status || "using",
+                  is_booked: true,
+                  isBooked: true,
+                }
+              : seat
+          )
+        );
+      }
+    } catch (error) {
+      console.warn("내 좌석 조회 실패, 프론트 상태 유지:", error);
+    }
+  };
 
   const addAlert = (type, title, description, key) => {
     setAlerts((prev) => {
       if (prev.some((alert) => alert.key === key)) return prev;
 
-      const newAlert = {
-        key,
-        type,
-        title,
-        description,
-      };
-
-      return [newAlert, ...prev];
+      return [
+        {
+          key,
+          type,
+          title,
+          description,
+        },
+        ...prev,
+      ];
     });
   };
 
@@ -92,19 +136,19 @@ const MySeatPage = ({
 
         if (next === 600) {
           addAlert(
-            'warning',
-            '남은 시간 10분 남았습니다.',
-            '* 자리 비움 시간 경과 시, 자동 반납 처리 됩니다.',
-            'warning-10'
+            "warning",
+            "남은 시간 10분 남았습니다.",
+            "* 자리 비움 시간 경과 시, 자동 반납 처리 됩니다.",
+            "warning-10"
           );
         }
 
         if (next === 300) {
           addAlert(
-            'warning',
-            '남은 시간 5분 남았습니다.',
-            '* 자리 비움 시간 경과 시, 자동 반납 처리 됩니다.',
-            'warning-5'
+            "warning",
+            "남은 시간 5분 남았습니다.",
+            "* 자리 비움 시간 경과 시, 자동 반납 처리 됩니다.",
+            "warning-5"
           );
         }
 
@@ -113,17 +157,15 @@ const MySeatPage = ({
 
           setSeats((prevSeats) =>
             prevSeats.map((seat) =>
-              seat.id === reservedSeatId
-                ? { ...seat, status: 'auto' }
-                : seat
+              seat.id === mySeatId ? { ...seat, status: "auto" } : seat
             )
           );
 
           addAlert(
-            'danger',
-            '자동 반납 처리되었습니다.',
-            '* 자리 비움 시간 초과로 좌석이 자동 반납 됩니다.',
-            'auto-return'
+            "danger",
+            "자동 반납 처리되었습니다.",
+            "* 자리 비움 시간 초과로 좌석이 자동 반납 됩니다.",
+            "auto-return"
           );
 
           return 0;
@@ -134,24 +176,93 @@ const MySeatPage = ({
     }, 1000);
 
     return () => clearInterval(timer);
-  }, [isTemp, reservedSeatId, setSeats]);
+  }, [isTemp, mySeatId, setSeats]);
 
-  const handleReturnSeat = () => {
-    if (!reservedSeatId) return;
+  const handleTempLeave = async () => {
+    if (!mySeatId || isActionLoading) return;
 
-    setSeats((prevSeats) =>
-      prevSeats.map((seat) =>
-        seat.id === reservedSeatId
-          ? { ...seat, status: 'vacant' }
-          : seat
-      )
-    );
+    try {
+      setIsActionLoading(true);
 
-    setReservedSeatId(null);
-    setRemainingSeconds(TEMP_SECONDS);
-    setAlerts([]);
-    alert('좌석이 반납되었습니다.');
-    navigate('/');
+      try {
+        await tempLeaveReservation(mySeatId);
+      } catch (error) {
+        console.warn("일시비움 API 실패, 프론트 상태로 대체:", error);
+      }
+
+      setSeats((prevSeats) =>
+        prevSeats.map((seat) =>
+          seat.id === mySeatId ? { ...seat, status: "temp" } : seat
+        )
+      );
+
+      setRemainingSeconds(TEMP_SECONDS);
+      alert("일시비움 상태로 변경되었습니다.");
+    } finally {
+      setIsActionLoading(false);
+    }
+  };
+
+  const handleRestoreSeat = async () => {
+    if (!mySeatId || isActionLoading) return;
+
+    try {
+      setIsActionLoading(true);
+
+      try {
+        await restoreReservation(mySeatId);
+      } catch (error) {
+        console.warn("복귀 API 실패, 프론트 상태로 대체:", error);
+      }
+
+      setSeats((prevSeats) =>
+        prevSeats.map((seat) =>
+          seat.id === mySeatId ? { ...seat, status: "using" } : seat
+        )
+      );
+
+      setRemainingSeconds(TEMP_SECONDS);
+      setAlerts([]);
+      alert("좌석 사용 상태로 복귀했습니다.");
+    } finally {
+      setIsActionLoading(false);
+    }
+  };
+
+  const handleReturnSeat = async () => {
+    if (!mySeatId || isActionLoading) return;
+
+    try {
+      setIsActionLoading(true);
+
+      try {
+        await returnReservation(mySeatId);
+      } catch (error) {
+        console.warn("좌석 반납 API 실패, 프론트 상태로 대체:", error);
+      }
+
+      setSeats((prevSeats) =>
+        prevSeats.map((seat) =>
+          seat.id === mySeatId
+            ? {
+                ...seat,
+                status: "vacant",
+                is_booked: false,
+                isBooked: false,
+              }
+            : seat
+        )
+      );
+
+      setReservedSeatId(null);
+      setMySeatId(null);
+      setRemainingSeconds(TEMP_SECONDS);
+      setAlerts([]);
+      alert("좌석이 반납되었습니다.");
+      navigate("/");
+    } finally {
+      setIsActionLoading(false);
+    }
   };
 
   if (!mySeat) {
@@ -184,7 +295,7 @@ const MySeatPage = ({
               <React.Fragment key={seat.id}>
                 <div
                   className={`seat-card ${
-                    seat.id === reservedSeatId ? 'my-seat-highlight-card' : ''
+                    seat.id === mySeatId ? "my-seat-highlight-card" : ""
                   }`}
                   style={{ backgroundColor: config.bgColor }}
                 >
@@ -228,28 +339,28 @@ const MySeatPage = ({
               <div
                 key={alert.key}
                 className={`my-seat-alert-card ${
-                  alert.type === 'danger'
-                    ? 'my-seat-alert-card-danger'
-                    : 'my-seat-alert-card-warning'
+                  alert.type === "danger"
+                    ? "my-seat-alert-card-danger"
+                    : "my-seat-alert-card-warning"
                 }`}
               >
                 <div className="my-seat-alert-main">
                   <div
                     className={`my-seat-alert-icon ${
-                      alert.type === 'danger'
-                        ? 'my-seat-alert-icon-danger'
-                        : 'my-seat-alert-icon-warning'
+                      alert.type === "danger"
+                        ? "my-seat-alert-icon-danger"
+                        : "my-seat-alert-icon-warning"
                     }`}
                   >
-                    {alert.type === 'danger' ? '✓' : '⚠'}
+                    {alert.type === "danger" ? "✓" : "⚠"}
                   </div>
 
                   <div className="my-seat-alert-texts">
                     <div
                       className={`my-seat-alert-title ${
-                        alert.type === 'danger'
-                          ? 'my-seat-alert-title-danger'
-                          : 'my-seat-alert-title-warning'
+                        alert.type === "danger"
+                          ? "my-seat-alert-title-danger"
+                          : "my-seat-alert-title-warning"
                       }`}
                     >
                       {alert.title}
@@ -272,7 +383,7 @@ const MySeatPage = ({
 
       <div className="my-seat-overlay">
         <div className="my-seat-modal">
-          <button className="my-seat-close" onClick={() => navigate('/')}>
+          <button className="my-seat-close" onClick={() => navigate("/")}>
             ×
           </button>
 
@@ -292,13 +403,13 @@ const MySeatPage = ({
               <span
                 className={`my-seat-value ${
                   isTemp
-                    ? 'my-seat-temp'
+                    ? "my-seat-temp"
                     : isAuto
-                    ? 'my-seat-auto'
-                    : 'my-seat-using'
+                    ? "my-seat-auto"
+                    : "my-seat-using"
                 }`}
               >
-                {isTemp ? '자리 비움' : isAuto ? '자동 반납' : '사용중'}
+                {isTemp ? "자리 비움" : isAuto ? "자동 반납" : "사용중"}
               </span>
             </div>
 
@@ -317,16 +428,39 @@ const MySeatPage = ({
             )}
           </div>
 
-          {!isAuto ? (
-            <button
-              className={`my-seat-return-button ${
-                isTemp ? 'my-seat-return-button-danger' : ''
-              }`}
-              onClick={handleReturnSeat}
-            >
-              ✓ 좌석 반납
-            </button>
-          ) : (
+          {!isAuto && (
+            <>
+              {!isTemp ? (
+                <button
+                  className="my-seat-return-button"
+                  onClick={handleTempLeave}
+                  disabled={isActionLoading}
+                >
+                  자리 비움
+                </button>
+              ) : (
+                <button
+                  className="my-seat-return-button"
+                  onClick={handleRestoreSeat}
+                  disabled={isActionLoading}
+                >
+                  복귀
+                </button>
+              )}
+
+              <button
+                className={`my-seat-return-button ${
+                  isTemp ? "my-seat-return-button-danger" : ""
+                }`}
+                onClick={handleReturnSeat}
+                disabled={isActionLoading}
+              >
+                ✓ 좌석 반납
+              </button>
+            </>
+          )}
+
+          {isAuto && (
             <button
               className="my-seat-return-button my-seat-return-button-disabled"
               disabled

@@ -15,6 +15,10 @@ const request = async (endpoint, options = {}) => {
     throw new Error(errorText || `API 요청 실패: ${response.status}`);
   }
 
+  if (response.status === 204) {
+    return null;
+  }
+
   return response.json();
 };
 
@@ -27,4 +31,29 @@ export const createReservation = ({ seatId }) => {
     }),
   });
 };
-// 내 좌석 현황 추가 예정
+
+// 내 좌석 현황 조회
+export const getMyReservation = () => {
+  return request("/reservations/me");
+};
+
+// 좌석 반납
+export const returnReservation = (seatId) => {
+  return request(`/reservations/${seatId}`, {
+    method: "DELETE",
+  });
+};
+
+// 일시비움
+export const tempLeaveReservation = (seatId) => {
+  return request(`/reservations/${seatId}/temp`, {
+    method: "PATCH",
+  });
+};
+
+// 복귀
+export const restoreReservation = (seatId) => {
+  return request(`/reservations/${seatId}/return`, {
+    method: "PATCH",
+  });
+};
