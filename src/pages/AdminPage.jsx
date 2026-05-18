@@ -38,6 +38,18 @@ function AdminPage() {
     loadInitialData();
   }, []);
 
+  const getSeatX = (seat) => {
+    return seat.coord_x ?? seat.x ?? seat.coordinate_x ?? "-";
+  };
+
+  const getSeatY = (seat) => {
+    return seat.coord_y ?? seat.y ?? seat.coordinate_y ?? "-";
+  };
+
+  const getSeatCameraId = (group, seat) => {
+    return group.camera_id ?? seat.camera_id ?? seat.cameraId ?? "";
+  };
+
   const loadInitialData = async () => {
     try {
       setLoading(true);
@@ -63,12 +75,12 @@ function AdminPage() {
       const seatGroups = await getAllSeats();
 
       const convertedSeats = seatGroups.flatMap((group) =>
-        group.seats.map((seat) => ({
+        (group.seats || []).map((seat) => ({
           id: seat.id,
           name: seat.name,
-          cameraId: group.camera_id,
-          x: seat.coord_x,
-          y: seat.coord_y,
+          cameraId: getSeatCameraId(group, seat),
+          x: getSeatX(seat),
+          y: getSeatY(seat),
         }))
       );
 
@@ -145,9 +157,9 @@ function AdminPage() {
         {
           id: createdSeat.id,
           name: createdSeat.name,
-          cameraId: createdSeat.camera_id,
-          x: createdSeat.coord_x,
-          y: createdSeat.coord_y,
+          cameraId: createdSeat.camera_id ?? selectedCameraId,
+          x: createdSeat.coord_x ?? createdSeat.x ?? mappedPoint.x,
+          y: createdSeat.coord_y ?? createdSeat.y ?? mappedPoint.y,
         },
       ]);
 
@@ -163,9 +175,7 @@ function AdminPage() {
     try {
       await deleteAdminSeat(seatId);
 
-      setSeats((prev) =>
-        prev.filter((seat) => seat.id !== seatId)
-      );
+      setSeats((prev) => prev.filter((seat) => seat.id !== seatId));
     } catch (error) {
       console.error(error);
       alert("좌석 삭제에 실패했습니다.");
@@ -299,9 +309,7 @@ function AdminPage() {
               </div>
 
               <span className="camera-badge">
-                {selectedCamera
-                  ? selectedCamera.id
-                  : "카메라 미등록"}
+                {selectedCamera ? selectedCamera.id : "카메라 미등록"}
               </span>
             </div>
 
@@ -324,10 +332,7 @@ function AdminPage() {
                     loop
                     playsInline
                   >
-                    <source
-                      src="/seat_video.mp4"
-                      type="video/mp4"
-                    />
+                    <source src="/seat_video.mp4" type="video/mp4" />
                   </video>
 
                   {mappedPoint && (
@@ -374,15 +379,10 @@ function AdminPage() {
               </div>
 
               {filteredSeats.length === 0 ? (
-                <p className="empty-text">
-                  등록된 좌석이 없습니다.
-                </p>
+                <p className="empty-text">등록된 좌석이 없습니다.</p>
               ) : (
                 filteredSeats.map((seat) => (
-                  <div
-                    key={seat.id}
-                    className="seat-table-row"
-                  >
+                  <div key={seat.id} className="seat-table-row">
                     <span>{seat.name}</span>
                     <span>{seat.cameraId}</span>
                     <span>{seat.x}</span>
@@ -392,9 +392,7 @@ function AdminPage() {
                       <button
                         className="delete-seat-button"
                         type="button"
-                        onClick={() =>
-                          handleDeleteSeat(seat.id)
-                        }
+                        onClick={() => handleDeleteSeat(seat.id)}
                       >
                         삭제
                       </button>

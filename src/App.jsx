@@ -93,13 +93,6 @@ const App = () => {
       const data = await getAllSeats();
       const apiSeats = convertSeatGroupsToSeats(data);
 
-      /*
-        백엔드 DB에 좌석이 70개 이상 준비됐을 때만
-        실제 API 데이터로 전체 좌석을 교체함.
-
-        백엔드에 관리자페이지에서 등록한 좌석 1~69개만 있을 경우:
-        → 기존 70석 시연 데이터 유지
-      */
       if (apiSeats.length >= 70) {
         setSeats(apiSeats);
         setIsSeatApiConnected(true);
@@ -182,12 +175,6 @@ const App = () => {
       )}
 
       <div className={`main-content ${isAdminPage ? 'admin-main-content' : ''}`}>
-        {!isSeatApiConnected && (
-          <div style={{ padding: '8px 16px', fontSize: '12px', color: '#999' }}>
-            백엔드 좌석 API 연결 대기 중입니다. 현재는 초기 시연용 좌석 데이터가 표시됩니다.
-          </div>
-        )}
-
         <Routes>
           <Route path="/" element={<DashboardPage seats={seats} />} />
 
