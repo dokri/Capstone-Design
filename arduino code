@@ -1,0 +1,235 @@
+#include <Wire.h>
+#include "HX711.h"
+#include <Adafruit_VL53L0X.h>
+
+// =========================
+// 핀 설정
+// =========================
+#define HX711_DT   16
+#define HX711_SCK  17
+
+// =========================
+// 객체 생성
+// =========================
+HX711 scale;
+Adafruit_VL53L0X lox = Adafruit_VL53L0X();
+
+// =========================
+// 칼만 필터 클래스
+// =========================
+class SimpleKalman {
+
+private:
+  float err_measure;
+  float err_estimate;
+  float q;
+  float current_estimate;
+  float last_estimate;
+  float kalman_gain;
+
+public:
+
+  SimpleKalman(float mea_e, float est_e, float q_val) {
+
+    err_measure = mea_e;
+    err_estimate = est_e;
+    q = q_val;
+    last_estimate = 0;
+  }
+
+  float updateEstimate(float mea) {
+
+    kalman_gain = err_estimate / (err_estimate + err_measure);
+
+    current_estimate = last_estimate +
+                       kalman_gain * (mea - last_estimate);
+
+    err_estimate = (1.0 - kalman_gain) *
+                   err_estimate +
+                   fabs(last_estimate - current_estimate) * q;
+
+    last_estimate = current_estimate;
+
+    return current_estimate;
+  }
+};
+
+// =========================
+// 필터 객체
+// =========================
+SimpleKalman weightKalman(2, 2, 0.01);
+SimpleKalman distKalman(10, 10, 0.05);
+
+// =========================
+// 보정값
+// =========================
+float calibration_factor = -7050.0;
+
+// =========================
+
+void setup() {
+
+  Serial.begin(115200);
+
+  Serial.println();
+  Serial.println("======================");
+  Serial.println("BayesSeat Start");
+  Serial.println("======================");
+
+  // =====================
+  // I2C 시작
+  // =====================
+  Wire.begin(21, 22);
+
+  // =====================
+  // ToF 시작
+  // =====================
+  if (!lox.begin()) {
+
+    Serial.println("VL53L0X 연결 실패");
+
+  } else {
+
+    Serial.println("VL53L0X 연결 성공");
+  }
+
+  // =====================
+  // HX711 시작
+  // =====================
+  scale.begin(HX711_DT, HX711_SCK);
+
+  if (scale.is_ready()) {
+
+    Serial.println("HX711 연결 성공");
+
+    scale.set_scale(calibration_factor);
+
+    delay(3000);
+
+    scale.tare();
+
+    Serial.println("영점 완료");
+
+  } else {
+
+    Serial.println("HX711 연결 실패");
+  }
+
+  Serial.println("======================");
+}
+
+void loop() {
+
+  // =====================
+  // HX711 RAW 평균
+  // =====================
+  long total = 0;
+
+  for (int i = 0; i < 10; i++) {
+
+    total += scale.read();
+  }
+
+  long rawAvg = total / 10;
+
+  // =====================
+  // 무게 계산
+  // =====================
+  float weight = scale.get_units(5);
+
+  // 칼만 필터 적용
+  float filteredWeight =
+      weightKalman.updateEstimate(weight);
+
+  // =====================
+  // ToF 거리 측정
+  // =====================
+  VL53L0X_RangingMeasurementData_t measure;
+
+  lox.rangingTest(&measure, false);
+
+  float distance = 2000;
+
+  if (measure.RangeStatus != 4) {
+
+    distance = measure.RangeMilliMeter;
+  }
+
+  // 칼만 필터 적용
+  float filteredDistance =
+      distKalman.updateEstimate(distance);
+
+  // =====================
+  // 확률 계산
+  // =====================
+
+  // 무게 확률
+  float pWeight =
+      1.0 / (1.0 + exp(-1.5 *
+      (filteredWeight - 5.0)));
+
+  // 거리 확률
+  float pDistance =
+      1.0 / (1.0 + exp(0.02 *
+      (filteredDistance - 600.0)));
+
+  // =====================
+  // 최종 확률 계산
+  // =====================
+  float finalProb =
+
+      (pWeight * pDistance * 0.98) +
+
+      (pWeight * (1 - pDistance) * 0.15) +
+
+      ((1 - pWeight) * pDistance * 0.85) +
+
+      ((1 - pWeight) * (1 - pDistance) * 0.02);
+
+  // =====================
+  // 상태 결정
+  // =====================
+  String seatState;
+
+  if (finalProb >= 0.5) {
+
+    seatState = "OCCUPIED";
+
+  } else {
+
+    seatState = "EMPTY";
+  }
+
+  // =====================
+  // 출력
+  // =====================
+  Serial.println();
+  Serial.println("===== SENSOR DATA =====");
+
+  Serial.print("HX711 RAW AVG: ");
+  Serial.println(rawAvg);
+
+  Serial.print("Weight: ");
+  Serial.print(filteredWeight, 2);
+  Serial.println(" kg");
+
+  Serial.print("Distance: ");
+  Serial.print(filteredDistance, 0);
+  Serial.println(" mm");
+
+  Serial.print("Weight Probability: ");
+  Serial.println(pWeight, 2);
+
+  Serial.print("Distance Probability: ");
+  Serial.println(pDistance, 2);
+
+  Serial.print("Final Probability: ");
+  Serial.println(finalProb, 2);
+
+  Serial.print("Seat State: ");
+  Serial.println(seatState);
+
+  Serial.println("======================");
+
+  delay(1000);
+}
