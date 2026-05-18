@@ -52,9 +52,15 @@ const createInitialSeats = () => {
 };
 
 const convertSeatGroupsToSeats = (seatGroups) => {
+  if (!Array.isArray(seatGroups)) return [];
+
   return seatGroups.flatMap((group) =>
-    group.seats.map((seat) => ({
+    (group.seats || []).map((seat) => ({
       ...seat,
+      id: seat.id,
+      name: seat.name,
+      status: seat.status || 'vacant',
+      is_booked: seat.is_booked ?? false,
       camera_id: group.camera_id,
     }))
   );
@@ -71,12 +77,20 @@ const App = () => {
   const fetchSeats = async () => {
     try {
       const data = await getAllSeats();
-
       const apiSeats = convertSeatGroupsToSeats(data);
 
-      if (apiSeats.length > 0) {
+      /*
+        백엔드 DB에 좌석이 70개 이상 준비됐을 때만
+        실제 API 데이터로 전체 좌석을 교체함.
+
+        백엔드에 관리자페이지에서 등록한 좌석 1~69개만 있을 경우:
+        → 기존 70석 시연 데이터 유지
+      */
+      if (apiSeats.length >= 70) {
         setSeats(apiSeats);
         setIsSeatApiConnected(true);
+      } else {
+        setIsSeatApiConnected(false);
       }
     } catch (error) {
       console.error('좌석 상태 조회 실패:', error);
