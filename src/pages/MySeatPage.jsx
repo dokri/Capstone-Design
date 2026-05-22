@@ -6,7 +6,6 @@ import chairIcon from "../assets/chair.svg";
 import {
   getMyReservation,
   returnReservation,
-  tempLeaveReservation,
   restoreReservation,
 } from "../api/reservationApi";
 
@@ -46,6 +45,9 @@ const SEAT_TYPES = {
 
 const TEMP_SECONDS = 11 * 60;
 
+const AUTO_TEMP_START_KEY = "autoTempStartAt";
+const TEMP_START_KEY = "tempStartedAt";
+
 const formatRemainingTime = (seconds) => {
   const safeSeconds = Math.max(0, seconds);
   const hours = String(Math.floor(safeSeconds / 3600)).padStart(2, "0");
@@ -80,7 +82,8 @@ const MySeatPage = ({
     try {
       const data = await getMyReservation();
 
-      const seatId = data?.seat_id || data?.id;
+      const reservationData = Array.isArray(data) ? data[0] : data;
+      const seatId = reservationData?.seat_id || reservationData?.id;
 
       if (seatId) {
         setMySeatId(seatId);
@@ -91,7 +94,7 @@ const MySeatPage = ({
             seat.id === seatId
               ? {
                   ...seat,
-                  status: data.status || "using",
+                  status: reservationData.status || "using",
                   is_booked: true,
                   isBooked: true,
                 }
@@ -124,84 +127,71 @@ const MySeatPage = ({
     setAlerts((prev) => prev.filter((alert) => alert.key !== key));
   };
 
+  // 일시비움 상태의 남은 복귀 시간 유지 + 10분/5분 알림 + 자동반납
   useEffect(() => {
     if (!isTemp) {
       setRemainingSeconds(TEMP_SECONDS);
       return;
     }
 
-    const timer = setInterval(() => {
-      setRemainingSeconds((prev) => {
-        const next = prev - 1;
+    let tempStartAt = localStorage.getItem(TEMP_START_KEY);
 
-        if (next === 600) {
-          addAlert(
-            "warning",
-            "남은 시간 10분 남았습니다.",
-            "* 자리 비움 시간 경과 시, 자동 반납 처리 됩니다.",
-            "warning-10"
-          );
-        }
+    if (!tempStartAt) {
+      tempStartAt = String(Date.now());
+      localStorage.setItem(TEMP_START_KEY, tempStartAt);
+    }
 
-        if (next === 300) {
-          addAlert(
-            "warning",
-            "남은 시간 5분 남았습니다.",
-            "* 자리 비움 시간 경과 시, 자동 반납 처리 됩니다.",
-            "warning-5"
-          );
-        }
+    const updateRemainingTime = () => {
+      const elapsedSeconds = Math.floor(
+        (Date.now() - Number(tempStartAt)) / 1000
+      );
 
-        if (next <= 0) {
-          clearInterval(timer);
+      const next = Math.max(0, TEMP_SECONDS - elapsedSeconds);
 
-          setSeats((prevSeats) =>
-            prevSeats.map((seat) =>
-              seat.id === mySeatId ? { ...seat, status: "auto" } : seat
-            )
-          );
+      setRemainingSeconds(next);
 
-          addAlert(
-            "danger",
-            "자동 반납 처리되었습니다.",
-            "* 자리 비움 시간 초과로 좌석이 자동 반납 됩니다.",
-            "auto-return"
-          );
+      if (next <= 600 && next > 590) {
+        addAlert(
+          "warning",
+          "남은 시간 10분 남았습니다.",
+          "* 자리 비움 시간 경과 시, 자동 반납 처리 됩니다.",
+          "warning-10"
+        );
+      }
 
-          return 0;
-        }
+      if (next <= 300 && next > 290) {
+        addAlert(
+          "warning",
+          "남은 시간 5분 남았습니다.",
+          "* 자리 비움 시간 경과 시, 자동 반납 처리 됩니다.",
+          "warning-5"
+        );
+      }
 
-        return next;
-      });
-    }, 1000);
+      if (next <= 0) {
+        localStorage.removeItem(TEMP_START_KEY);
+
+        setSeats((prevSeats) =>
+          prevSeats.map((seat) =>
+            seat.id === mySeatId ? { ...seat, status: "auto" } : seat
+          )
+        );
+
+        addAlert(
+          "danger",
+          "자동 반납 처리되었습니다.",
+          "* 자리 비움 시간 초과로 좌석이 자동 반납 됩니다.",
+          "auto-return"
+        );
+      }
+    };
+
+    updateRemainingTime();
+
+    const timer = setInterval(updateRemainingTime, 1000);
 
     return () => clearInterval(timer);
   }, [isTemp, mySeatId, setSeats]);
-
-  const handleTempLeave = async () => {
-    if (!mySeatId || isActionLoading) return;
-
-    try {
-      setIsActionLoading(true);
-
-      try {
-        await tempLeaveReservation(mySeatId);
-      } catch (error) {
-        console.warn("일시비움 API 실패, 프론트 상태로 대체:", error);
-      }
-
-      setSeats((prevSeats) =>
-        prevSeats.map((seat) =>
-          seat.id === mySeatId ? { ...seat, status: "temp" } : seat
-        )
-      );
-
-      setRemainingSeconds(TEMP_SECONDS);
-      alert("일시비움 상태로 변경되었습니다.");
-    } finally {
-      setIsActionLoading(false);
-    }
-  };
 
   const handleRestoreSeat = async () => {
     if (!mySeatId || isActionLoading) return;
@@ -220,6 +210,9 @@ const MySeatPage = ({
           seat.id === mySeatId ? { ...seat, status: "using" } : seat
         )
       );
+
+      localStorage.removeItem(TEMP_START_KEY);
+      localStorage.setItem(AUTO_TEMP_START_KEY, String(Date.now()));
 
       setRemainingSeconds(TEMP_SECONDS);
       setAlerts([]);
@@ -255,6 +248,11 @@ const MySeatPage = ({
       );
 
       setReservedSeatId(null);
+
+      localStorage.removeItem("reservedSeatId");
+      localStorage.removeItem(AUTO_TEMP_START_KEY);
+      localStorage.removeItem(TEMP_START_KEY);
+
       setMySeatId(null);
       setRemainingSeconds(TEMP_SECONDS);
       setAlerts([]);
@@ -365,7 +363,9 @@ const MySeatPage = ({
                     >
                       {alert.title}
                     </div>
-                    <div className="my-seat-alert-desc">{alert.description}</div>
+                    <div className="my-seat-alert-desc">
+                      {alert.description}
+                    </div>
                   </div>
                 </div>
 
@@ -430,15 +430,7 @@ const MySeatPage = ({
 
           {!isAuto && (
             <>
-              {!isTemp ? (
-                <button
-                  className="my-seat-return-button"
-                  onClick={handleTempLeave}
-                  disabled={isActionLoading}
-                >
-                  자리 비움
-                </button>
-              ) : (
+              {isTemp && (
                 <button
                   className="my-seat-return-button"
                   onClick={handleRestoreSeat}

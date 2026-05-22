@@ -67,6 +67,14 @@ const convertSeatGroupsToSeats = (seatGroups) => {
 };
 
 const App = () => {
+
+  // ================================
+  // 자동 자리비움 설정
+  // ================================
+  const AUTO_TEMP_SECONDS = 5;
+  const AUTO_TEMP_START_KEY = 'autoTempStartAt';
+  const TEMP_START_KEY = 'tempStartedAt';
+
   const [seats, setSeats] = useState(() => {
     const savedSeats = localStorage.getItem('seats');
 
@@ -128,6 +136,64 @@ const App = () => {
   useEffect(() => {
     localStorage.setItem('seats', JSON.stringify(seats));
   }, [seats]);
+
+  // ================================
+  // 자동 자리비움 처리 (5초)
+  // ================================
+  useEffect(() => {
+    if (!reservedSeatId) return;
+
+    const reservedSeat = seats.find(
+      (seat) => seat.id === reservedSeatId
+    );
+
+    if (!reservedSeat) return;
+
+    // using 상태일 때만 실행
+    if (reservedSeat.status === 'using') {
+
+      let startAt = localStorage.getItem(AUTO_TEMP_START_KEY);
+
+      if (!startAt) {
+        startAt = String(Date.now());
+        localStorage.setItem(AUTO_TEMP_START_KEY, startAt);
+      }
+
+      const timer = setInterval(() => {
+
+        const elapsedSeconds =
+          Math.floor((Date.now() - Number(startAt)) / 1000);
+
+        // 5초 지나면 temp 전환
+        if (elapsedSeconds >= AUTO_TEMP_SECONDS) {
+
+          setSeats((prevSeats) =>
+            prevSeats.map((seat) =>
+              seat.id === reservedSeatId
+                ? {
+                    ...seat,
+                    status: 'temp',
+                  }
+                : seat
+            )
+          );
+
+          localStorage.removeItem(AUTO_TEMP_START_KEY);
+
+          localStorage.setItem(
+            TEMP_START_KEY,
+            String(Date.now())
+          );
+
+          clearInterval(timer);
+        }
+
+      }, 1000);
+
+      return () => clearInterval(timer);
+    }
+
+  }, [reservedSeatId, seats]);
 
   return (
     <div className="container">
