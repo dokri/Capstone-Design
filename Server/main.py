@@ -26,6 +26,7 @@ from schemas import (
     HomographyUpdate,
     SeatCreate,
     SeatResponse,
+    SensorPayload,
 )
 from services.seat_mapper import process_detections, release_timed_out_seats
 
@@ -107,6 +108,26 @@ async def receive_detections(payload: DetectionPayload, db: AsyncSession = Depen
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     return {"processed": len(payload.detections), "seats_updated": len(seats)}
+
+@app.post("/sensor-data", summary="HW 센서 데이터 수신")
+async def receive_sensor_data(
+    payload: SensorPayload,
+    db: AsyncSession = Depends(get_db)
+):
+    seat = await crud.update_sensor_status(
+        db,
+        payload.seat_id,
+        payload.occupied
+    )
+
+    if not seat:
+        raise HTTPException(status_code=404, detail="좌석을 찾을 수 없습니다.")
+
+    return {
+        "success": True,
+        "seat_id": seat.id,
+        "sensor_occupied": seat.sensor_occupied,
+    }
 
 # ══════════════════════════════════════════════════════════════════════════════
 # 메인 서버 → React 웹

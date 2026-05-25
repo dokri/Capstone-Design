@@ -119,3 +119,7 @@ class SeatResponse(BaseModel):
 
     class Config:
         from_attributes = True
+
+class SensorPayload(BaseModel):
+    seat_id: int
+    occupied: bool

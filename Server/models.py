@@ -29,6 +29,7 @@ class Seat(Base):
     coord_y = Column(Float, nullable=False)
 
     is_occupied = Column(Boolean, default=False, nullable=False)
+    sensor_occupied = Column(Boolean, default=False)
     status = Column(String, default="vacant", nullable=False)  # using | temp | vacant
     last_detected_at = Column(DateTime(timezone=True), nullable=True)
     first_detected_at = Column(DateTime(timezone=True), nullable=True)  # 추가
