@@ -10,10 +10,25 @@ from schemas import BoundingBox, SeatStatusEnum
 from services.homography import compute_center, apply_homography
 
 # ── 설정 값 ────────────────────────────────────────────────────────────
+# 사람이 일정 시간 이상 연속 감지되어야
+# 실제 "using(사용중)" 상태로 변경됨
+# (잠깐 지나가는 사람 오탐 방지)
 REQUIRED_OCCUPANCY_SECONDS = 5  
+
+
+# 사용자가 자리를 비웠다고 판단하기 전까지의 유예 시간
+# YOLO가 잠깐 사람을 놓쳐도 바로 temp/vacant로 안 바뀌게 함
 OCCUPANCY_TIMEOUT_SECONDS = 5   
-AUTO_RELEASE_SECONDS = 10          
-DISTANCE_THRESHOLD = 500  
+
+
+# temp(자리비움) 상태가 이 시간 이상 유지되면
+# 자동 반납(auto) 처리
+AUTO_RELEASE_SECONDS = 180          
+
+
+# YOLO 탐지 좌표와 좌석 좌표 사이의 최대 허용 거리
+# 이 거리 이내일 때만 "이 사람이 이 좌석에 앉아있다"고 판단
+DISTANCE_THRESHOLD = 50
 # ──────────────────────────────────────────────────────────────────────
 
 # [추가] 중복 요청 제어용 변수

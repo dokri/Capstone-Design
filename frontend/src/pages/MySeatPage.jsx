@@ -51,10 +51,11 @@ const SEAT_TYPES = {
   },
 };
 
-const TEMP_SECONDS = 11 * 60;
+const TEMP_SECONDS = 180;
 
 const formatRemainingTime = (seconds) => {
-  const safeSeconds = Math.max(0, seconds);
+  const safeSeconds = Math.max(0, Math.floor(Number(seconds)));
+
   const hours = String(Math.floor(safeSeconds / 3600)).padStart(2, "0");
   const minutes = String(Math.floor((safeSeconds % 3600) / 60)).padStart(2, "0");
   const secs = String(safeSeconds % 60).padStart(2, "0");
@@ -151,30 +152,24 @@ const MySeatPage = ({
       return;
     }
 
-    const serverVacantSeconds = Number(mySeat?.vacant_seconds ?? 0);
+    const serverVacantSeconds = Math.floor(
+      Number(mySeat?.vacant_seconds ?? 0)
+    );
+
     const baseRemaining = Math.max(0, TEMP_SECONDS - serverVacantSeconds);
 
     setRemainingSeconds(baseRemaining);
 
     const timer = setInterval(() => {
       setRemainingSeconds((prev) => {
-        const next = Math.max(0, prev - 1);
+        const next = Math.max(0, Math.floor(Number(prev) - 1));
 
-        if (next <= 600 && next > 590) {
+        if (next === 60) {
           addAlert(
             "warning",
-            "남은 시간 10분 남았습니다.",
+            "남은 시간 1분 남았습니다.",
             "* 자리 비움 시간 경과 시, 자동 반납 처리 됩니다.",
-            "warning-10"
-          );
-        }
-
-        if (next <= 300 && next > 290) {
-          addAlert(
-            "warning",
-            "남은 시간 5분 남았습니다.",
-            "* 자리 비움 시간 경과 시, 자동 반납 처리 됩니다.",
-            "warning-5"
+            "warning-1"
           );
         }
 

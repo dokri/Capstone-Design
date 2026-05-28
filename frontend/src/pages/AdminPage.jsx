@@ -11,7 +11,7 @@ import {
 
 import "./AdminPage.css";
 
-const YOLO_STREAM_BASE_URL = "https://unlinked-handiness-confound.ngrok-free.dev";
+const YOLO_STREAM_BASE_URL = "https://guided-contractor-chubby-fascinating.trycloudflare.com";
 
 function AdminPage() {
   const navigate = useNavigate();
