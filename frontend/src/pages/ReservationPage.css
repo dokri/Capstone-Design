@@ -1,0 +1,130 @@
+.reservation-dashboard-card {
+  overflow: hidden;
+}
+
+.reservation-seat-grid {
+  padding-right: 6px;
+}
+
+.reservation-seat-card {
+  cursor: pointer;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.reservation-seat-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 14px rgba(0, 0, 0, 0.08);
+}
+
+.reservation-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 199px;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.34);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 500;
+}
+
+.reservation-modal {
+  width: 370px;
+  background: #FFFFFF;
+  border-radius: 10px;
+  box-shadow: 0 14px 34px rgba(0, 0, 0, 0.2);
+  padding: 22px 22px 18px;
+  position: relative;
+}
+
+.reservation-modal-close {
+  position: absolute;
+  top: 10px;
+  right: 14px;
+  border: none;
+  background: transparent;
+  font-size: 22px;
+  color: #555;
+  cursor: pointer;
+  line-height: 1;
+}
+
+.reservation-modal-title {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  font-size: 22px;
+  font-weight: 800;
+  color: #0A2C73;
+  margin-bottom: 18px;
+}
+
+.reservation-modal-icon {
+  font-size: 19px;
+  color: #0A2C73;
+}
+
+.reservation-info-box {
+  border-top: 1px solid #D5D5D5;
+  border-bottom: 1px solid #D5D5D5;
+}
+
+.reservation-info-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  min-height: 46px;
+  padding: 0 2px;
+  border-bottom: 1px solid #D5D5D5;
+}
+
+.reservation-info-row:last-child {
+  border-bottom: none;
+}
+
+.reservation-info-label {
+  font-size: 15px;
+  color: #222;
+  font-weight: 500;
+}
+
+.reservation-info-value {
+  font-size: 15px;
+  color: #0A2C73;
+  font-weight: 700;
+}
+
+.reservation-info-available {
+  color: #0A2C73;
+}
+
+.reservation-info-unavailable {
+  color: #666666;
+}
+
+.reservation-confirm-button {
+  width: 100%;
+  height: 46px;
+  margin-top: 20px;
+  background: #0A2C73;
+  color: #FFFFFF;
+  border: none;
+  border-radius: 8px;
+  font-size: 16px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.reservation-confirm-button-disabled {
+  background: #B8C2D6;
+  cursor: not-allowed;
+}
+
+.reservation-modal-note {
+  margin-top: 10px;
+  text-align: center;
+  font-size: 12px;
+  color: #666666;
+}
